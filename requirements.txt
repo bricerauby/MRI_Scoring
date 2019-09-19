@@ -1,0 +1,9 @@
+numpy==1.14.2
+pydicom==1.3.0
+natsort==6.0.0
+pandas
+tensorflow
+os
+argparse
+tqdm
+json
