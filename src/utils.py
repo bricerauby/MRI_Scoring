@@ -3,9 +3,9 @@ import os
 import numpy as np
 from natsort import natsorted
 import tensorflow as tf
+import SimpleITK as sitk
 
-
-def load_dicom(path_to_folder, serie_name, type_strict=None):
+def load_dicom_dicom(path_to_folder, serie_name, type_strict=None):
     """loads a dicom and returns it as a np.array
      args :
      serie_name -- string, the name of the serie to load, it corresponds to the
@@ -35,6 +35,29 @@ def load_dicom(path_to_folder, serie_name, type_strict=None):
         ds = pydicom.read_file(filenameDCM)
         assert ds.SeriesDescription == serie_description
         ArrayDicom[:, :, dcm_list.index(filenameDCM)] = ds.pixel_array
+    return(infos, ArrayDicom)
+
+
+def load_dicom(path_to_folder, serie_name, type_strict=None):
+    """loads a dicom and returns it as a np.array
+     args :
+     serie_name -- string, the name of the serie to load, it corresponds to the
+     name of the folder containing all the dicom files
+     path_to_folder -- string, the path to the folder containing all the series
+     type_strict -- string, the type of MRI if None all type will be loaded
+     otherwise only the matching exams
+    """
+    serie_path = os.path.join(path_to_folder, serie_name)
+    infos = {'serie_description': serie_name}
+    reader = sitk.ImageSeriesReader()
+    dicom_names = reader.GetGDCMSeriesFileNames(serie_path)
+    reader.SetFileNames(dicom_names)
+    image = reader.Execute()
+    const_voxel_dims = image.GetSize()
+    infos['dims'] = const_voxel_dims
+    ConstPixelSpacing = image.GetSpacing()
+    infos['resolution'] = ConstPixelSpacing
+    ArrayDicom = sitk.GetArrayFromImage(image)
     return(infos, ArrayDicom)
 
 
