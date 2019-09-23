@@ -28,6 +28,7 @@ path_to_folder = 'data/Dataset_1'
 serie_name = '55457'
 
 
+
 # labels = pd.read_csv(os.path.join(path_to_folder, 'labels.csv'), decimal=",")
 # patient_infos = labels[labels.Sequence_id == int(serie_name)]
 # features = {
