@@ -52,6 +52,20 @@ def resnet_layer(inputs,
     return x
 
 
+def dumb_model():
+    inputs = layers.Input(shape=(None, None, None, 1))
+    x = inputs
+    x = layers.Conv3D(1,
+                      kernel_size=3,
+                      strides=1,
+                      padding='same',
+                      kernel_initializer='he_normal',
+                      kernel_regularizer=keras.regularizers.l2(1e-4),
+                      use_bias=True
+                      )(x)
+    return(keras.Model(inputs=inputs, outputs=x))
+
+
 def resnet(input_shape, depth, num_classes, use3D):
     """ResNet Version 1 Model builder [a]
 

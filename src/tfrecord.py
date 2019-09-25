@@ -33,9 +33,9 @@ def generate_tfrecords(path_to_folder, tf_record_path,
                 'examination_date': patient_infos['examination_date'].iloc[0]
             }
             example = createExample(dict_infos, str(serie), path_to_folder)
-            with tf.python_io.TFRecordWriter(os.path.join(tf_record_path,
-                                                          '{}_set.tfrecords')
-                                             .format(mode)) as writer:
+            with tf.io.TFRecordWriter(os.path.join(tf_record_path,
+                                                   '{}_set_{}.tfrecords')
+                                             .format(mode, serie)) as writer:
                 writer.write(example.SerializeToString())
         except NotImplementedError:
             print('{} has been ignored'.format(serie))
