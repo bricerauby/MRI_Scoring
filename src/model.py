@@ -3,6 +3,20 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 
+def dumb_model():
+    inputs = layers.Input(shape=(None, None, None, 1))
+    x = inputs
+    x = layers.Conv3D(1,
+                      kernel_size=3,
+                      strides=1,
+                      padding='same',
+                      kernel_initializer='he_normal',
+                      kernel_regularizer=keras.regularizers.l2(1e-4),
+                      use_bias=True
+                      )(x)
+    return(keras.Model(inputs=inputs, outputs=x))
+
+
 def resnet_layer(inputs,
                  num_filters=16,
                  kernel_size=3,
@@ -51,22 +65,74 @@ def resnet_layer(inputs,
         x = layers.Activation(activation)(x)
     return x
 
+def conv(num_filters=64, kernel_size=3, strides=1, 
+         padding='same', kernel_initializer='he_normal', 
+         kernel_regularizer=keras.regularizers.l2(1e-4), 
+         useBias=False,
+         use3D=True): 
+    if use3D:
+        return layers.Conv3D(num_filters, 
+                             kernel_size=kernel_size, 
+                             strides=strides, 
+                             padding='same', 
+                             kernel_initializer='he_normal', 
+                             kernel_regularizer=keras.regularizers.l2(1e-4), 
+                             use_bias=useBias)
+    else:
+        return layers.Conv2D(num_filters, 
+                             kernel_size=kernel_size, 
+                             strides=strides, 
+                             padding='same', 
+                             kernel_initializer='he_normal', 
+                             kernel_regularizer=keras.regularizers.l2(1e-4), 
+                             use_bias=useBias)      
+           
+           
+def conv_unit(inputs, num_filters=64,
+     kernel_size=3,
+     activation='relu',
+     batch_normalization=True,
+     use3D=False): 
+    
+    if use3D:
+        max_pool = layers.MaxPooling3D(pool_size=3, strides=2, padding='same', data_format=None)
+    else:
+        max_pool = layers.MaxPooling2D(pool_size=3, strides=2, padding='same', data_format=None)
+        
+    x = inputs 
+    path1, path2, path3, path4 = (conv(strides=1, use3D=use3D, useBias=(not batch_normalization), num_filters=num_filters)(x),  
+                                  conv(strides=1, use3D=use3D, useBias=(not batch_normalization), num_filters=num_filters)(x),  
+                                  conv(strides=2, use3D=use3D, useBias=(not batch_normalization), num_filters=num_filters)(x), 
+                                  max_pool(x))
+    if batch_normalization:
+        path1, path2, path3 = (layers.BatchNormalization()(path1), 
+                               layers.BatchNormalization()(path2), 
+                               layers.BatchNormalization()(path3))
+    if activation is not None:
+        path1, path2, path3 = (layers.Activation(activation)(path1), 
+                               layers.Activation(activation)(path2), 
+                               layers.Activation(activation)(path3))
+    path1, path2 =  (conv(strides=1, use3D=use3D, useBias=(not batch_normalization), num_filters=num_filters)(path1),
+                     conv(strides=2, use3D=use3D, useBias=(not batch_normalization), num_filters=num_filters)(path2))
+    if batch_normalization:
+        path1, path2 = (layers.BatchNormalization()(path1), 
+                        layers.BatchNormalization()(path2))
+                              
+    if activation is not None:
+        path1, path2 = (layers.Activation(activation)(path1), 
+                        layers.Activation(activation)(path2)) 
 
-def dumb_model():
-    inputs = layers.Input(shape=(None, None, None, 1))
-    x = inputs
-    x = layers.Conv3D(1,
-                      kernel_size=3,
-                      strides=1,
-                      padding='same',
-                      kernel_initializer='he_normal',
-                      kernel_regularizer=keras.regularizers.l2(1e-4),
-                      use_bias=True
-                      )(x)
-    return(keras.Model(inputs=inputs, outputs=x))
+    path1 = conv(strides=2, use3D=use3D, useBias=(not batch_normalization), num_filters=num_filters)(path1) 
+    if batch_normalization:
+        path1 = layers.BatchNormalization()(path1)
+                              
+    if activation is not None:
+        path1 = layers.Activation(activation)(path1)
+    x = layers.Concatenate()([path1, path2, path3, path4])
+    return x
+    
 
-
-def resnet(input_shape, depth, num_classes, use3D):
+def resnet(input_shape, depth, num_classes, use3D=False, useBatchNorm=True):
     """ResNet Version 1 Model builder [a]
 
     Stacks of 2 x (3 x 3) Conv2D-BN-ReLU
@@ -111,10 +177,12 @@ def resnet(input_shape, depth, num_classes, use3D):
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
                              strides=strides,
+                             batch_normalization=useBatchNorm,
                              use3D=use3D)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
                              activation=None,
+                             batch_normalization=useBatchNorm,
                              use3D=use3D)
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 # linear projection residual shortcut connection to match
@@ -144,3 +212,19 @@ def resnet(input_shape, depth, num_classes, use3D):
     # Instantiate model.
     model = keras.Model(inputs=inputs, outputs=outputs)
     return model
+
+def customInception(input_shape,  num_classes, num_filters=64, dense_size=256, use3D=False, useBatchNorm=True):
+    inputs = layers.Input(shape=input_shape)
+    x = inputs 
+    for i in range(3):
+        x = conv_unit(x, use3D=use3D, batch_normalization=useBatchNorm, num_filters=num_filters)
+    x = layers.Flatten()(x)
+    x = layers.Dropout(0.5)(x)
+    y = layers.Dense(dense_size, activation='softmax', kernel_initializer='he_normal')(x)
+    y = layers.Dropout(0.5)(y)
+    outputs = layers.Dense(num_classes,
+                           activation='softmax',
+                           kernel_initializer='he_normal')(y)
+    # Instantiate model.
+    model = keras.Model(inputs=inputs, outputs=outputs)
+    return model    

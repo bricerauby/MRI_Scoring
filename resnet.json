@@ -1,0 +1,8 @@
+{"batch_norm": true, 
+ "n_epochs": 100, 
+ "batch_size": 2, 
+ "seed": 0, 
+ "model": "resnet", 
+ "learning_rate": 1e-2,
+ "minimum_learning_rate": 1e-6,
+ "input_size": 112}
